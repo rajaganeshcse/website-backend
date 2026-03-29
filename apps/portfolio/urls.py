@@ -1,0 +1,35 @@
+from django.urls import path
+from .views import (
+    PublicPortfolioView, PublicContactView, PublicGalleryView,
+    AdminHeroView,
+    AdminSkillListView, AdminSkillDetailView,
+    AdminProjectListView, AdminProjectDetailView,
+    AdminEducationListView, AdminEducationDetailView,
+    AdminInternshipListView, AdminInternshipDetailView,
+    AdminCertListView, AdminCertDetailView,
+    AdminWorkshopListView, AdminWorkshopDetailView,
+    AdminMessagesView,
+    AdminGalleryListView, AdminGalleryDetailView,
+)
+
+urlpatterns = [
+    path('portfolio/',                    PublicPortfolioView.as_view()),
+    path('contact/',                      PublicContactView.as_view()),
+    path('gallery/',                      PublicGalleryView.as_view()),
+    path('admin/hero/',                   AdminHeroView.as_view()),
+    path('admin/skills/',                 AdminSkillListView.as_view()),
+    path('admin/skills/<int:pk>/',        AdminSkillDetailView.as_view()),
+    path('admin/projects/',               AdminProjectListView.as_view()),
+    path('admin/projects/<int:pk>/',      AdminProjectDetailView.as_view()),
+    path('admin/education/',              AdminEducationListView.as_view()),
+    path('admin/education/<int:pk>/',     AdminEducationDetailView.as_view()),
+    path('admin/internships/',            AdminInternshipListView.as_view()),
+    path('admin/internships/<int:pk>/',   AdminInternshipDetailView.as_view()),
+    path('admin/certs/',                  AdminCertListView.as_view()),
+    path('admin/certs/<int:pk>/',         AdminCertDetailView.as_view()),
+    path('admin/workshops/',              AdminWorkshopListView.as_view()),
+    path('admin/workshops/<int:pk>/',     AdminWorkshopDetailView.as_view()),
+    path('admin/messages/',               AdminMessagesView.as_view()),
+    path('admin/gallery/',                AdminGalleryListView.as_view()),
+    path('admin/gallery/<int:pk>/',       AdminGalleryDetailView.as_view()),
+]

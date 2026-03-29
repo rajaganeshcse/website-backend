@@ -1,0 +1,347 @@
+{
+  "hero": {
+    "id": "hero-1",
+    "name": "Rajaganesh T",
+    "title": "Aspiring Android App Developer",
+    "bio": "A passionate and detail-oriented developer seeking an entry-level role in Android and mobile application development. Skilled in Java, Dart, Android Studio, Firebase, React, and problem solving, with hands-on experience building mobile apps and practical software projects.",
+    "email": "rajaganeshcse2005@gmail.com",
+    "phone": "+91 6382641748",
+    "github": "https://github.com/rajaganeshcse",
+    "linkedin": "https://www.linkedin.com/in/rajaganesh-t-835a21364",
+    "leetcode": "https://github.com/rajaganeshcse",
+    "instagram": "https://github.com/rajaganeshcse",
+    "portfolio": "https://react-website-five-theta.vercel.app/",
+    "location": "Vanrasankuppam, Cuddalore, Tamil Nadu, India",
+    "college": "Dhanalakshmi Srinivasan Engineering College, Perambalur - Computer Science and Engineering",
+    "address": "70, MaariAmman Kovil Street, Vanrasankuppam, Cuddalore (TK), Cuddalore (DT) - 607102",
+    "photo_path": "/media/hero/1774766311282-404325164-gallery_1774689393623-whatsapp-image-2026-03-14-at-6.13.00-pm.jpeg",
+    "resume_path": "/media/resumes/rajaganesh-resume.pdf",
+    "resume_name": "Rajaganesh Resume (2).pdf"
+  },
+  "skills": [
+    {
+      "id": "skill-1",
+      "category": "programming",
+      "name": "Core Java",
+      "level": 90,
+      "order": 1
+    },
+    {
+      "id": "skill-2",
+      "category": "programming",
+      "name": "Python",
+      "level": 78,
+      "order": 2
+    },
+    {
+      "id": "skill-3",
+      "category": "frontend",
+      "name": "HTML",
+      "level": 85,
+      "order": 1
+    },
+    {
+      "id": "skill-4",
+      "category": "frontend",
+      "name": "CSS",
+      "level": 82,
+      "order": 2
+    },
+    {
+      "id": "skill-5",
+      "category": "frontend",
+      "name": "React",
+      "level": 80,
+      "order": 3
+    },
+    {
+      "id": "skill-6",
+      "category": "mobile",
+      "name": "Android Studio",
+      "level": 88,
+      "order": 1
+    },
+    {
+      "id": "skill-7",
+      "category": "mobile",
+      "name": "Firebase",
+      "level": 82,
+      "order": 2
+    },
+    {
+      "id": "skill-8",
+      "category": "backend",
+      "name": "Flask",
+      "level": 72,
+      "order": 1
+    },
+    {
+      "id": "skill-9",
+      "category": "database",
+      "name": "MySQL",
+      "level": 78,
+      "order": 1
+    },
+    {
+      "id": "skill-10",
+      "category": "database",
+      "name": "MongoDB",
+      "level": 75,
+      "order": 2
+    },
+    {
+      "id": "skill-11",
+      "category": "analytics",
+      "name": "Excel",
+      "level": 80,
+      "order": 1
+    },
+    {
+      "id": "skill-12",
+      "category": "ml",
+      "name": "Machine Learning Basics",
+      "level": 72,
+      "order": 1
+    },
+    {
+      "id": "skill-13",
+      "category": "tools",
+      "name": "Git",
+      "level": 84,
+      "order": 1
+    },
+    {
+      "id": "skill-14",
+      "category": "tools",
+      "name": "GitHub",
+      "level": 84,
+      "order": 2
+    },
+    {
+      "id": "skill-15",
+      "category": "tools",
+      "name": "Postman",
+      "level": 76,
+      "order": 3
+    },
+    {
+      "id": "skill-16",
+      "category": "tools",
+      "name": "AWS Fundamentals",
+      "level": 65,
+      "order": 4
+    },
+    {
+      "id": "skill-17",
+      "category": "programming",
+      "name": "asasc",
+      "level": 80,
+      "order": 0
+    },
+    {
+      "id": "skill-18",
+      "category": "programming",
+      "name": "DV",
+      "level": 80,
+      "order": 0
+    }
+  ],
+  "projects": [
+    {
+      "id": "project-1",
+      "title": "Smart Health Care Monitoring System",
+      "description": "Developed a smart rural health monitoring system that collects real-time vitals such as temperature, pulse, and heart rate using IoT sensors and predicts health status using a machine learning model. Built a Flask backend for prediction and API integration, a React frontend for real-time visualization, and used MongoDB for patient data storage.",
+      "tech_stack": "Python, Flask, React, MongoDB, Machine Learning, IoT, NodeMCU",
+      "github_url": "https://github.com/rajaganeshcse/smart_HealthCare_project.git",
+      "live_url": "",
+      "video_url": "",
+      "image_paths": [],
+      "order": 1
+    }
+  ],
+  "apps": [
+    {
+      "id": "app-1",
+      "title": "Game Tournament App",
+      "description": "Designed and developed an Android application that enables users to join and manage online gaming tournaments. Implemented user authentication, tournament registration, and real-time data storage using Firebase Authentication and Firestore, with an intuitive UI built in Android Studio.",
+      "dashboard_url": "",
+      "github_url": "https://github.com/rajaganeshcse/MY_APP.git",
+      "playstore_url": "",
+      "cover_image_path": "",
+      "screenshot_paths": [],
+      "apk_path": "",
+      "apk_name": "",
+      "order": 1
+    },
+    {
+      "id": "app-2",
+      "title": "EWF",
+      "description": "WCFEC",
+      "dashboard_url": "FEWFCWEFC",
+      "github_url": "FE",
+      "playstore_url": "",
+      "order": 0,
+      "cover_image_path": "",
+      "screenshot_paths": [],
+      "apk_path": "",
+      "apk_name": ""
+    }
+  ],
+  "education": [
+    {
+      "id": "education-1",
+      "degree": "B.E Computer Science and Engineering",
+      "institution": "Dhanalakshmi Srinivasan Engineering College, Perambalur",
+      "year": "2023 - Present",
+      "score": "GPA: 8.86 / 10",
+      "result_pdf_path": "",
+      "result_pdf_name": "",
+      "order": 1,
+      "documents": []
+    },
+    {
+      "id": "education-2",
+      "degree": "Higher Secondary Education",
+      "institution": "Government Higher Secondary School, Naduveerapattu",
+      "year": "2021 - 2023",
+      "score": "Percentage: 76%",
+      "result_pdf_path": "",
+      "result_pdf_name": "",
+      "order": 2,
+      "documents": []
+    },
+    {
+      "id": "education-3",
+      "degree": "Secondary School Education",
+      "institution": "Government Higher Secondary School, Naduveerapattu",
+      "year": "2020 - 2021",
+      "score": "Percentage: 62%",
+      "result_pdf_path": "",
+      "result_pdf_name": "",
+      "order": 3,
+      "documents": []
+    }
+  ],
+  "internships": [
+    {
+      "id": "internship-1",
+      "role": "SGX FFVBF",
+      "company": "GRRG",
+      "duration": "",
+      "description": "GR",
+      "order": 0
+    }
+  ],
+  "certifications": [
+    {
+      "id": "cert-1",
+      "name": "SWAYAM - Cyber Security And Privacy",
+      "issuer": "SWAYAM",
+      "year": "",
+      "description": "",
+      "credential_url": "",
+      "image_path": "/media/certs/1774771553797-165162766-gallery_1774689393623-whatsapp-image-2026-03-14-at-6.13.00-pm.jpeg",
+      "order": 1
+    },
+    {
+      "id": "cert-2",
+      "name": "Learnathon 2024",
+      "issuer": "ICT Academy",
+      "year": "2024",
+      "description": "",
+      "credential_url": "",
+      "image_path": "",
+      "order": 2
+    },
+    {
+      "id": "cert-3",
+      "name": "MS Excel AI and Automation",
+      "issuer": "",
+      "year": "",
+      "description": "",
+      "credential_url": "",
+      "image_path": "",
+      "order": 3
+    },
+    {
+      "id": "cert-4",
+      "name": "Java Spring Boot and App Development",
+      "issuer": "",
+      "year": "",
+      "description": "",
+      "credential_url": "",
+      "image_path": "",
+      "order": 4
+    },
+    {
+      "id": "cert-5",
+      "name": "Flutter App Development (Dart)",
+      "issuer": "",
+      "year": "",
+      "description": "",
+      "credential_url": "",
+      "image_path": "",
+      "order": 5
+    },
+    {
+      "id": "cert-6",
+      "name": "Microsoft Azure AI",
+      "issuer": "Microsoft",
+      "year": "",
+      "description": "",
+      "credential_url": "",
+      "image_path": "",
+      "order": 6
+    }
+  ],
+  "workshops": [
+    {
+      "id": "workshop-1",
+      "title": "Artificial Intelligence with Machine Learning",
+      "organizer": "NIT Trichy",
+      "date": "29.03.2025 - 30.03.2025 (2 days)",
+      "description": "Hands-on workshop on AI, machine learning, and data analysis, improving technical and problem-solving skills.",
+      "link_url": "",
+      "image_paths": [],
+      "order": 1
+    },
+    {
+      "id": "workshop-2",
+      "title": "Campus Student Submission - MongoDB Workshop - 2026",
+      "organizer": "ICT Academy, Chennai and Sairam Engineering College",
+      "date": "28.01.2026",
+      "description": "Participated in a hands-on MongoDB workshop, learning database management and gaining exposure to industry practices.",
+      "link_url": "",
+      "image_paths": [],
+      "order": 2
+    }
+  ],
+  "gallery": [
+    {
+      "id": "gallery-1",
+      "title": "Workshop Participation",
+      "category": "workshop",
+      "caption": "Hands-on technical participation and learning.",
+      "image_path": "/media/gallery/WhatsApp_Image_2026-03-14_at_6.13.00_PM.jpeg",
+      "order": 1
+    },
+    {
+      "id": "gallery-2",
+      "title": "Certificate Moment",
+      "category": "certificate",
+      "caption": "Academic and technical milestones.",
+      "image_path": "/media/gallery/WhatsApp_Image_2026-03-14_at_6.13.00_PM_1.jpeg",
+      "order": 2
+    },
+    {
+      "id": "gallery-3",
+      "title": "Achievement Snapshot",
+      "category": "achievement",
+      "caption": "Portfolio highlights and participation records.",
+      "image_path": "/media/gallery/WhatsApp_Image_2026-03-14_at_6.13.02_PM.jpeg",
+      "order": 3
+    }
+  ],
+  "messages": [],
+  "journals": []
+}
