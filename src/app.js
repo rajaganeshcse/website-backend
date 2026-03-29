@@ -6,13 +6,17 @@ const publicRoutes = require("./routes/publicRoutes");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
+const { normalizeOrigin } = require("./utils/origin");
 
 const app = express();
 const mediaRoot = path.join(__dirname, "..", "media");
 const allowedOrigins = (process.env.CLIENT_URL || "")
   .split(",")
-  .map((value) => value.trim())
+  .map((value) => normalizeOrigin(value))
   .filter(Boolean);
+
+// Respect proxy-forwarded HTTPS headers from Render so generated asset URLs use https in production.
+app.set("trust proxy", 1);
 
 app.use(
   cors({
@@ -21,8 +25,10 @@ app.use(
         return callback(null, true);
       }
 
-      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
-      if (isLocal || allowedOrigins.includes(origin)) {
+      const normalizedOrigin = normalizeOrigin(origin);
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalizedOrigin);
+
+      if (isLocal || allowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       }
 

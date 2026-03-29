@@ -3,7 +3,7 @@ const express = require("express");
 const asyncHandler = require("../utils/asyncHandler");
 const { requireAdminAuth } = require("../middleware/auth");
 const { createUploader } = require("../middleware/upload");
-const { toStoredPath } = require("../utils/files");
+const { toStoredPath, requestOrigin } = require("../utils/files");
 const { DEFAULT_HERO } = require("../utils/defaults");
 const { isDatabaseReady } = require("../utils/dbState");
 const {
@@ -100,8 +100,7 @@ function normalizeStoredDocumentPath(req, value) {
 
   try {
     const parsed = new URL(rawValue);
-    const requestOrigin = `${req.protocol}://${req.get("host")}`;
-    if (parsed.origin === requestOrigin) {
+    if (parsed.origin === requestOrigin(req)) {
       return parsed.pathname;
     }
   } catch {

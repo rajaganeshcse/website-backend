@@ -1,6 +1,7 @@
 const path = require("path");
 
 const { backendRoot } = require("../middleware/upload");
+const { requestOrigin } = require("./origin");
 
 function toStoredPath(file) {
   if (!file || !file.path) {
@@ -20,10 +21,11 @@ function absoluteUrl(req, storedPath) {
     return storedPath;
   }
 
-  return `${req.protocol}://${req.get("host")}${storedPath}`;
+  return `${requestOrigin(req)}${storedPath}`;
 }
 
 module.exports = {
   toStoredPath,
+  requestOrigin,
   absoluteUrl,
 };
