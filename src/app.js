@@ -6,36 +6,34 @@ const publicRoutes = require("./routes/publicRoutes");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
-const { normalizeOrigin } = require("./utils/origin");
 
 const app = express();
 const mediaRoot = path.join(__dirname, "..", "media");
-const allowedOrigins = (process.env.CLIENT_URL || "")
-  .split(",")
-  .map((value) => normalizeOrigin(value))
-  .filter(Boolean);
+const allowedOrigins = [
+  "https://rajaganeshcse.vercel.app",
+  "http://localhost:3000",
+];
 
-// Respect proxy-forwarded HTTPS headers from Render so generated asset URLs use https in production.
 app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin(origin, callback) {
+    origin: function (origin, callback) {
       if (!origin) {
         return callback(null, true);
       }
 
-      const normalizedOrigin = normalizeOrigin(origin);
-      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalizedOrigin);
-
-      if (isLocal || allowedOrigins.includes(normalizedOrigin)) {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
+      } else {
+        return callback(new Error("CORS not allowed"), false);
       }
-
-      return callback(new Error("Origin not allowed by CORS"));
     },
+    credentials: true,
   })
 );
+
+app.options("*", cors());
 
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
