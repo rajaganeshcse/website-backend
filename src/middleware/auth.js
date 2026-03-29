@@ -1,8 +1,5 @@
 const jwt = require("jsonwebtoken");
-
-function jwtSecret() {
-  return process.env.JWT_SECRET || "replace-this-with-a-strong-secret";
-}
+const { jwtSecret } = require("../config/env");
 
 function signAdminToken(username) {
   return jwt.sign({ username, role: "admin" }, jwtSecret(), {

@@ -3,6 +3,7 @@ require("dotenv").config();
 const http = require("http");
 const app = require("./src/app");
 const connectToDatabase = require("./src/config/db");
+const { validateSecurityConfig } = require("./src/config/env");
 
 const PORT = Number(process.env.PORT) || 8000;
 const RETRY_DELAY_MS = 15000;
@@ -28,6 +29,8 @@ async function connectWithRetry() {
 }
 
 async function start() {
+  validateSecurityConfig();
+
   const server = http.createServer(app);
 
   server.on("error", (error) => {
