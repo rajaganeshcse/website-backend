@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { startMediaCleanupScheduler } = require("../utils/mediaCleanup");
 
 async function connectToDatabase() {
   const mongoUri = process.env.MONGODB_URI;
@@ -11,6 +12,7 @@ async function connectToDatabase() {
     autoIndex: true,
   });
 
+  startMediaCleanupScheduler();
   console.log("Connected to MongoDB Atlas");
 }
 

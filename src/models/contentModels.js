@@ -161,6 +161,33 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const mediaAssetSchema = new mongoose.Schema(
+  {
+    owner_model: { type: String, required: true },
+    owner_id: { type: String, required: true },
+    stored_path: { type: String, required: true },
+    source_field: { type: String, default: "" },
+    original_name: { type: String, default: "" },
+    media_kind: { type: String, enum: ["image", "pdf"], required: true },
+    expires_at: { type: Date, required: true },
+    deleted_at: { type: Date, default: null },
+    cleanup_status: {
+      type: String,
+      enum: ["scheduled", "deleted", "failed"],
+      default: "scheduled",
+    },
+    cleanup_error: { type: String, default: "" },
+  },
+  { timestamps: true }
+);
+
+mediaAssetSchema.index(
+  { owner_model: 1, owner_id: 1, stored_path: 1 },
+  { unique: true }
+);
+mediaAssetSchema.index({ cleanup_status: 1, expires_at: 1 });
+mediaAssetSchema.index({ deleted_at: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 });
+
 const Hero = mongoose.models.Hero || mongoose.model("Hero", heroSchema);
 const Skill = mongoose.models.Skill || mongoose.model("Skill", skillSchema);
 const Project = mongoose.models.Project || mongoose.model("Project", projectSchema);
@@ -172,6 +199,7 @@ const Workshop = mongoose.models.Workshop || mongoose.model("Workshop", workshop
 const GalleryItem = mongoose.models.GalleryItem || mongoose.model("GalleryItem", gallerySchema);
 const Journal = mongoose.models.Journal || mongoose.model("Journal", journalSchema);
 const Message = mongoose.models.Message || mongoose.model("Message", messageSchema);
+const MediaAsset = mongoose.models.MediaAsset || mongoose.model("MediaAsset", mediaAssetSchema);
 
 module.exports = {
   Hero,
@@ -185,4 +213,5 @@ module.exports = {
   GalleryItem,
   Journal,
   Message,
+  MediaAsset,
 };

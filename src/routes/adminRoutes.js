@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { requireAdminAuth } = require("../middleware/auth");
 const { createUploader } = require("../middleware/upload");
 const { toStoredPath, requestOrigin } = require("../utils/files");
+const { deleteOwnedMedia, scheduleUploadedMediaExpiry } = require("../utils/mediaCleanup");
 const { DEFAULT_HERO } = require("../utils/defaults");
 const { isDatabaseReady } = require("../utils/dbState");
 const {
@@ -184,6 +185,30 @@ async function findByIdOrThrow(Model, id, label) {
   return item;
 }
 
+async function scheduleMediaAutoDelete(req, ownerModel, ownerId) {
+  try {
+    await scheduleUploadedMediaExpiry({ req, ownerModel, ownerId });
+  } catch (error) {
+    if (error.statusCode && error.statusCode < 500) {
+      throw error;
+    }
+
+    console.error(`Failed to schedule media expiry for ${ownerModel} ${ownerId}: ${error.message}`);
+  }
+}
+
+async function cleanupDeletedMedia(ownerModel, item) {
+  try {
+    await deleteOwnedMedia({
+      ownerModel,
+      ownerId: item._id,
+      ownerSnapshot: item.toObject({ depopulate: true }),
+    });
+  } catch (error) {
+    console.error(`Failed to delete media for ${ownerModel} ${item._id}: ${error.message}`);
+  }
+}
+
 router.get(
   "/messages/",
   asyncHandler(async (req, res) => {
@@ -261,6 +286,7 @@ router.put(
     }
 
     await hero.save();
+    await scheduleMediaAutoDelete(req, "Hero", hero._id);
     res.json(serializeHero(hero, req));
   })
 );
@@ -349,6 +375,7 @@ router.post(
       image_paths: getFiles(req, ["image", "image2", "image3"]).map(toStoredPath),
     });
 
+    await scheduleMediaAutoDelete(req, "Project", item._id);
     res.status(201).json(serializeProject(item, req));
   })
 );
@@ -386,6 +413,7 @@ router.put(
     }
 
     await item.save();
+    await scheduleMediaAutoDelete(req, "Project", item._id);
     res.json(serializeProject(item, req));
   })
 );
@@ -400,6 +428,7 @@ router.delete(
 
     const item = await findByIdOrThrow(Project, req.params.id, "Project");
     await item.deleteOne();
+    await cleanupDeletedMedia("Project", item);
     res.json({ detail: "Project deleted." });
   })
 );
@@ -440,6 +469,7 @@ router.post(
       apk_name: apk ? apk.originalname || "" : "",
     });
 
+    await scheduleMediaAutoDelete(req, "AppItem", item._id);
     res.status(201).json(serializeApp(item, req));
   })
 );
@@ -491,6 +521,7 @@ router.put(
     }
 
     await item.save();
+    await scheduleMediaAutoDelete(req, "AppItem", item._id);
     res.json(serializeApp(item, req));
   })
 );
@@ -505,6 +536,7 @@ router.delete(
 
     const item = await findByIdOrThrow(AppItem, req.params.id, "App");
     await item.deleteOne();
+    await cleanupDeletedMedia("AppItem", item);
     res.json({ detail: "App deleted." });
   })
 );
@@ -535,6 +567,7 @@ router.post(
     applyEducationDocuments(item, documents);
     await item.save();
 
+    await scheduleMediaAutoDelete(req, "Education", item._id);
     res.status(201).json(serializeEducation(item, req));
   })
 );
@@ -567,6 +600,7 @@ router.put(
     applyEducationDocuments(item, buildEducationDocumentsFromRequest(req, item.documents || []));
 
     await item.save();
+    await scheduleMediaAutoDelete(req, "Education", item._id);
     res.json(serializeEducation(item, req));
   })
 );
@@ -581,6 +615,7 @@ router.delete(
 
     const item = await findByIdOrThrow(Education, req.params.id, "Education");
     await item.deleteOne();
+    await cleanupDeletedMedia("Education", item);
     res.json({ detail: "Education deleted." });
   })
 );
@@ -663,6 +698,7 @@ router.post(
       image_path: image ? toStoredPath(image) : "",
     });
 
+    await scheduleMediaAutoDelete(req, "Certification", item._id);
     res.status(201).json(serializeCertification(item, req));
   })
 );
@@ -693,6 +729,7 @@ router.put(
     }
 
     await item.save();
+    await scheduleMediaAutoDelete(req, "Certification", item._id);
     res.json(serializeCertification(item, req));
   })
 );
@@ -707,6 +744,7 @@ router.delete(
 
     const item = await findByIdOrThrow(Certification, req.params.id, "Certification");
     await item.deleteOne();
+    await cleanupDeletedMedia("Certification", item);
     res.json({ detail: "Certification deleted." });
   })
 );
@@ -735,6 +773,7 @@ router.post(
       image_paths: getFiles(req, ["image", "image2", "image3"]).map(toStoredPath),
     });
 
+    await scheduleMediaAutoDelete(req, "Workshop", item._id);
     res.status(201).json(serializeWorkshop(item, req));
   })
 );
@@ -784,6 +823,7 @@ router.put(
 
     item.image_paths = images.filter(Boolean);
     await item.save();
+    await scheduleMediaAutoDelete(req, "Workshop", item._id);
     res.json(serializeWorkshop(item, req));
   })
 );
@@ -798,6 +838,7 @@ router.delete(
 
     const item = await findByIdOrThrow(Workshop, req.params.id, "Workshop");
     await item.deleteOne();
+    await cleanupDeletedMedia("Workshop", item);
     res.json({ detail: "Workshop deleted." });
   })
 );
@@ -826,6 +867,7 @@ router.post(
       pdf_name: pdf ? pdf.originalname || "" : "",
     });
 
+    await scheduleMediaAutoDelete(req, "Journal", item._id);
     res.status(201).json(serializeJournal(item, req));
   })
 );
@@ -856,6 +898,7 @@ router.put(
       item.pdf_name = pdf.originalname || "";
     }
     await item.save();
+    await scheduleMediaAutoDelete(req, "Journal", item._id);
     res.json(serializeJournal(item, req));
   })
 );
@@ -870,6 +913,7 @@ router.delete(
 
     const item = await findByIdOrThrow(Journal, req.params.id, "Journal");
     await item.deleteOne();
+    await cleanupDeletedMedia("Journal", item);
     res.json({ detail: "Journal deleted." });
   })
 );
@@ -896,6 +940,7 @@ router.post(
       image_path: image ? toStoredPath(image) : "",
     });
 
+    await scheduleMediaAutoDelete(req, "GalleryItem", item._id);
     res.status(201).json(serializeGalleryItem(item, req));
   })
 );
@@ -926,6 +971,7 @@ router.put(
     }
 
     await item.save();
+    await scheduleMediaAutoDelete(req, "GalleryItem", item._id);
     res.json(serializeGalleryItem(item, req));
   })
 );
@@ -940,6 +986,7 @@ router.delete(
 
     const item = await findByIdOrThrow(GalleryItem, req.params.id, "Gallery item");
     await item.deleteOne();
+    await cleanupDeletedMedia("GalleryItem", item);
     res.json({ detail: "Gallery item deleted." });
   })
 );

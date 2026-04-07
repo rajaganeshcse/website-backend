@@ -51,3 +51,17 @@ Deployment notes:
 - `CLIENT_URL` supports comma-separated origins and ignores trailing slashes.
 - `PUBLIC_BASE_URL` makes generated media and file URLs use your public Render HTTPS URL.
 - The backend trusts proxy headers so Render/Vercel traffic resolves to HTTPS correctly.
+
+## Auto-delete uploads
+
+You can automatically delete uploaded images and PDFs after a few hours.
+
+- Set `UPLOAD_AUTO_DELETE_HOURS=3` to delete newly uploaded images/PDFs about 3 hours after upload.
+- Leave `UPLOAD_AUTO_DELETE_HOURS=0` to keep uploads permanently.
+- `UPLOAD_CLEANUP_INTERVAL_MINUTES` controls how often the cleanup worker checks for expired uploads.
+- You can override the default per request by sending `auto_delete_hours` in the upload form data.
+
+Important:
+
+- This feature removes both the MongoDB file reference and the physical file inside `backend/media/`.
+- If you turn it on globally, portfolio uploads such as gallery images, certificates, journals, education PDFs, hero photo, and resume can disappear after that time.
