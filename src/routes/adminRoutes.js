@@ -4,7 +4,8 @@ const asyncHandler = require("../utils/asyncHandler");
 const { requireAdminAuth } = require("../middleware/auth");
 const { createUploader } = require("../middleware/upload");
 const { toStoredPath, requestOrigin } = require("../utils/files");
-const { deleteOwnedMedia, scheduleUploadedMediaExpiry } = require("../utils/mediaCleanup");
+const { uploadFileToCloudinary } = require("../utils/cloudinaryMedia");
+const { deleteOwnedMedia, deleteStoredMedia, scheduleUploadedMediaExpiry } = require("../utils/mediaCleanup");
 const { DEFAULT_HERO } = require("../utils/defaults");
 const { isDatabaseReady } = require("../utils/dbState");
 const {
@@ -14,6 +15,7 @@ const {
   createRecord,
   updateRecord,
   deleteRecord,
+  readStore,
 } = require("../data/localStore");
 const {
   Hero,
@@ -89,6 +91,64 @@ function getFiles(req, fields) {
   return fields.map((field) => getFile(req, field)).filter(Boolean);
 }
 
+async function storeUploadedFile(file, folder) {
+  if (!file) {
+    return "";
+  }
+
+  const uploaded = await uploadFileToCloudinary(file, folder);
+  if (!uploaded?.secure_url) {
+    return "";
+  }
+
+  file.cloudinaryUrl = uploaded.secure_url;
+  file.cloudinaryPublicId = uploaded.public_id;
+  file.cloudinaryResourceType = uploaded.resource_type;
+
+  return toStoredPath(file);
+}
+
+async function storeUploadedFiles(files, folder) {
+  const uploadedPaths = [];
+
+  try {
+    for (const file of files) {
+      const storedPath = await storeUploadedFile(file, folder);
+      if (storedPath) {
+        uploadedPaths.push(storedPath);
+      }
+    }
+
+    return uploadedPaths;
+  } catch (error) {
+    await Promise.all(
+      uploadedPaths.map((storedPath) =>
+        deleteStoredMedia(storedPath).catch((cleanupError) => {
+          console.error(`Failed to rollback uploaded asset ${storedPath}: ${cleanupError.message}`);
+        })
+      )
+    );
+
+    throw error;
+  }
+}
+
+async function cleanupRemovedStoredPaths(previousPaths, nextPaths) {
+  const next = new Set(
+    nextPaths.map((value) => String(value || "").trim()).filter(Boolean)
+  );
+  const removed = [...new Set(previousPaths.map((value) => String(value || "").trim()).filter(Boolean))]
+    .filter((value) => !next.has(value));
+
+  await Promise.all(
+    removed.map((storedPath) =>
+      deleteStoredMedia(storedPath).catch((error) => {
+        console.error(`Failed to delete replaced media ${storedPath}: ${error.message}`);
+      })
+    )
+  );
+}
+
 function normalizeStoredDocumentPath(req, value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) {
@@ -111,7 +171,7 @@ function normalizeStoredDocumentPath(req, value) {
   return rawValue;
 }
 
-function buildEducationDocumentsFromRequest(req, currentDocuments = []) {
+async function buildEducationDocumentsFromRequest(req, currentDocuments = []) {
   const hasDocumentsJson = typeof req.body.documents_json === "string";
   const rawDocuments = (() => {
     if (!hasDocumentsJson) {
@@ -126,22 +186,26 @@ function buildEducationDocumentsFromRequest(req, currentDocuments = []) {
   })();
 
   if (Array.isArray(rawDocuments)) {
-    return rawDocuments
-      .map((document, index) => {
+    const documents = [];
+
+    for (const [index, document] of rawDocuments.entries()) {
         const uploadedFile = document.fileField ? getFile(req, document.fileField) : null;
         const pdfPath = uploadedFile
-          ? toStoredPath(uploadedFile)
+          ? await storeUploadedFile(uploadedFile, "education")
           : normalizeStoredDocumentPath(req, document.pdf_path || document.pdf_url || document.pdf_download_url);
         const pdfName = uploadedFile ? uploadedFile.originalname || "" : String(document.pdf_name || "").trim();
         const title = String(document.title || "").trim() || pdfName || `Document ${index + 1}`;
 
-        return {
+        if (pdfPath) {
+          documents.push({
           title,
           pdf_path: pdfPath,
           pdf_name: pdfName,
-        };
-      })
-      .filter((document) => document.pdf_path);
+          });
+        }
+      }
+
+    return documents;
   }
 
   const legacyPdf = getFile(req, "result_pdf");
@@ -149,7 +213,7 @@ function buildEducationDocumentsFromRequest(req, currentDocuments = []) {
     return [
       {
         title: "Uploaded PDF",
-        pdf_path: toStoredPath(legacyPdf),
+        pdf_path: await storeUploadedFile(legacyPdf, "education"),
         pdf_name: legacyPdf.originalname || "",
       },
     ];
@@ -261,11 +325,11 @@ router.put(
 
     if (!isDatabaseReady()) {
       if (photo) {
-        updates.photo_path = toStoredPath(photo);
+        updates.photo_path = await storeUploadedFile(photo, "hero");
       }
 
       if (resume) {
-        updates.resume_path = toStoredPath(resume);
+        updates.resume_path = await storeUploadedFile(resume, "hero");
         updates.resume_name = resume.originalname || "";
       }
 
@@ -274,19 +338,21 @@ router.put(
     }
 
     const hero = await getOrCreateHero();
+    const previousPaths = [hero.photo_path, hero.resume_path];
     Object.assign(hero, updates);
 
     if (photo) {
-      hero.photo_path = toStoredPath(photo);
+      hero.photo_path = await storeUploadedFile(photo, "hero");
     }
 
     if (resume) {
-      hero.resume_path = toStoredPath(resume);
+      hero.resume_path = await storeUploadedFile(resume, "hero");
       hero.resume_name = resume.originalname || "";
     }
 
     await hero.save();
     await scheduleMediaAutoDelete(req, "Hero", hero._id);
+    await cleanupRemovedStoredPaths(previousPaths, [hero.photo_path, hero.resume_path]);
     res.json(serializeHero(hero, req));
   })
 );
@@ -359,11 +425,13 @@ router.post(
     { name: "image3", maxCount: 1 },
   ]),
   asyncHandler(async (req, res) => {
+    const uploadedImages = await storeUploadedFiles(getFiles(req, ["image", "image2", "image3"]), "projects");
+
     if (!isDatabaseReady()) {
       const item = createRecord("projects", {
         ...pickFields(req.body, ["title", "description", "tech_stack", "github_url", "live_url", "video_url"]),
         order: numberOr(req.body.order, 0),
-        image_paths: getFiles(req, ["image", "image2", "image3"]).map(toStoredPath),
+        image_paths: uploadedImages,
       });
 
       return res.status(201).json(serializeProject(item, req));
@@ -372,7 +440,7 @@ router.post(
     const item = await Project.create({
       ...pickFields(req.body, ["title", "description", "tech_stack", "github_url", "live_url", "video_url"]),
       order: numberOr(req.body.order, 0),
-      image_paths: getFiles(req, ["image", "image2", "image3"]).map(toStoredPath),
+      image_paths: uploadedImages,
     });
 
     await scheduleMediaAutoDelete(req, "Project", item._id);
@@ -389,7 +457,7 @@ router.put(
   ]),
   asyncHandler(async (req, res) => {
     if (!isDatabaseReady()) {
-      const newImages = getFiles(req, ["image", "image2", "image3"]).map(toStoredPath);
+      const newImages = await storeUploadedFiles(getFiles(req, ["image", "image2", "image3"]), "projects");
       const item = updateRecord("projects", req.params.id, (current) => ({
         ...current,
         ...pickFields(req.body, ["title", "description", "tech_stack", "github_url", "live_url", "video_url"]),
@@ -404,16 +472,18 @@ router.put(
     }
 
     const item = await findByIdOrThrow(Project, req.params.id, "Project");
+    const previousPaths = [...(item.image_paths || [])];
     Object.assign(item, pickFields(req.body, ["title", "description", "tech_stack", "github_url", "live_url", "video_url"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
 
-    const newImages = getFiles(req, ["image", "image2", "image3"]).map(toStoredPath);
+    const newImages = await storeUploadedFiles(getFiles(req, ["image", "image2", "image3"]), "projects");
     if (req.body.replace_project_gallery && newImages.length > 0) {
       item.image_paths = newImages;
     }
 
     await item.save();
     await scheduleMediaAutoDelete(req, "Project", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, item.image_paths || []);
     res.json(serializeProject(item, req));
   })
 );
@@ -445,15 +515,17 @@ router.post(
   asyncHandler(async (req, res) => {
     const cover = getFile(req, "cover_image");
     const apk = getFile(req, "apk");
-    const screenshots = getFiles(req, ["screenshot1", "screenshot2", "screenshot3"]).map(toStoredPath);
+    const coverPath = await storeUploadedFile(cover, "apps");
+    const apkPath = await storeUploadedFile(apk, "apps");
+    const screenshots = await storeUploadedFiles(getFiles(req, ["screenshot1", "screenshot2", "screenshot3"]), "apps");
 
     if (!isDatabaseReady()) {
       const item = createRecord("apps", {
         ...pickFields(req.body, ["title", "description", "dashboard_url", "github_url", "playstore_url"]),
         order: numberOr(req.body.order, 0),
-        cover_image_path: cover ? toStoredPath(cover) : "",
+        cover_image_path: coverPath,
         screenshot_paths: screenshots,
-        apk_path: apk ? toStoredPath(apk) : "",
+        apk_path: apkPath,
         apk_name: apk ? apk.originalname || "" : "",
       });
 
@@ -463,9 +535,9 @@ router.post(
     const item = await AppItem.create({
       ...pickFields(req.body, ["title", "description", "dashboard_url", "github_url", "playstore_url"]),
       order: numberOr(req.body.order, 0),
-      cover_image_path: cover ? toStoredPath(cover) : "",
+      cover_image_path: coverPath,
       screenshot_paths: screenshots,
-      apk_path: apk ? toStoredPath(apk) : "",
+      apk_path: apkPath,
       apk_name: apk ? apk.originalname || "" : "",
     });
 
@@ -487,18 +559,20 @@ router.put(
     if (!isDatabaseReady()) {
       const cover = getFile(req, "cover_image");
       const apk = getFile(req, "apk");
-      const screenshots = getFiles(req, ["screenshot1", "screenshot2", "screenshot3"]).map(toStoredPath);
+      const coverPath = await storeUploadedFile(cover, "apps");
+      const apkPath = await storeUploadedFile(apk, "apps");
+      const screenshots = await storeUploadedFiles(getFiles(req, ["screenshot1", "screenshot2", "screenshot3"]), "apps");
 
       const item = updateRecord("apps", req.params.id, (current) => ({
         ...current,
         ...pickFields(req.body, ["title", "description", "dashboard_url", "github_url", "playstore_url"]),
         order: req.body.order !== undefined ? numberOr(req.body.order, current.order) : current.order,
-        cover_image_path: cover ? toStoredPath(cover) : current.cover_image_path,
+        cover_image_path: coverPath || current.cover_image_path,
         screenshot_paths:
           req.body.replace_app_screenshots && screenshots.length > 0
             ? screenshots
             : current.screenshot_paths || [],
-        apk_path: apk ? toStoredPath(apk) : current.apk_path,
+        apk_path: apkPath || current.apk_path,
         apk_name: apk ? apk.originalname || "" : current.apk_name,
       }));
 
@@ -506,22 +580,34 @@ router.put(
     }
 
     const item = await findByIdOrThrow(AppItem, req.params.id, "App");
+    const previousPaths = [
+      item.cover_image_path,
+      ...(item.screenshot_paths || []),
+      item.apk_path,
+    ];
     Object.assign(item, pickFields(req.body, ["title", "description", "dashboard_url", "github_url", "playstore_url"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
 
     const cover = getFile(req, "cover_image");
     const apk = getFile(req, "apk");
-    const screenshots = getFiles(req, ["screenshot1", "screenshot2", "screenshot3"]).map(toStoredPath);
+    const coverPath = await storeUploadedFile(cover, "apps");
+    const apkPath = await storeUploadedFile(apk, "apps");
+    const screenshots = await storeUploadedFiles(getFiles(req, ["screenshot1", "screenshot2", "screenshot3"]), "apps");
 
-    if (cover) item.cover_image_path = toStoredPath(cover);
+    if (coverPath) item.cover_image_path = coverPath;
     if (req.body.replace_app_screenshots && screenshots.length > 0) item.screenshot_paths = screenshots;
     if (apk) {
-      item.apk_path = toStoredPath(apk);
+      item.apk_path = apkPath;
       item.apk_name = apk.originalname || "";
     }
 
     await item.save();
     await scheduleMediaAutoDelete(req, "AppItem", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, [
+      item.cover_image_path,
+      ...(item.screenshot_paths || []),
+      item.apk_path,
+    ]);
     res.json(serializeApp(item, req));
   })
 );
@@ -545,7 +631,7 @@ router.post(
   "/education/",
   educationUpload.any(),
   asyncHandler(async (req, res) => {
-    const documents = buildEducationDocumentsFromRequest(req, []);
+    const documents = await buildEducationDocumentsFromRequest(req, []);
 
     if (!isDatabaseReady()) {
       const item = createRecord("education", {
@@ -577,30 +663,35 @@ router.put(
   educationUpload.any(),
   asyncHandler(async (req, res) => {
     if (!isDatabaseReady()) {
+      const currentEducation = (readStore().education || []).find((entry) => String(entry.id) === String(req.params.id));
+      const documents = await buildEducationDocumentsFromRequest(req, currentEducation?.documents || []);
       const item = updateRecord("education", req.params.id, (current) => ({
-        ...(() => {
-          const documents = buildEducationDocumentsFromRequest(req, current.documents || []);
-          return {
-            ...current,
-            ...pickFields(req.body, ["degree", "institution", "year", "score"]),
-            order: req.body.order !== undefined ? numberOr(req.body.order, current.order) : current.order,
-            documents,
-            result_pdf_path: documents[0]?.pdf_path || "",
-            result_pdf_name: documents[0]?.pdf_name || "",
-          };
-        })(),
+        ...current,
+        ...pickFields(req.body, ["degree", "institution", "year", "score"]),
+        order: req.body.order !== undefined ? numberOr(req.body.order, current.order) : current.order,
+        documents,
+        result_pdf_path: documents[0]?.pdf_path || "",
+        result_pdf_name: documents[0]?.pdf_name || "",
       }));
 
       return res.json(serializeEducation(item, req));
     }
 
     const item = await findByIdOrThrow(Education, req.params.id, "Education");
+    const previousPaths = [
+      item.result_pdf_path,
+      ...((item.documents || []).map((document) => document.pdf_path)),
+    ];
     Object.assign(item, pickFields(req.body, ["degree", "institution", "year", "score"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
-    applyEducationDocuments(item, buildEducationDocumentsFromRequest(req, item.documents || []));
+    applyEducationDocuments(item, await buildEducationDocumentsFromRequest(req, item.documents || []));
 
     await item.save();
     await scheduleMediaAutoDelete(req, "Education", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, [
+      item.result_pdf_path,
+      ...((item.documents || []).map((document) => document.pdf_path)),
+    ]);
     res.json(serializeEducation(item, req));
   })
 );
@@ -681,12 +772,13 @@ router.post(
   certUpload.fields([{ name: "image", maxCount: 1 }]),
   asyncHandler(async (req, res) => {
     const image = getFile(req, "image");
+    const imagePath = await storeUploadedFile(image, "certs");
 
     if (!isDatabaseReady()) {
       const item = createRecord("certifications", {
         ...pickFields(req.body, ["name", "issuer", "year", "description", "credential_url"]),
         order: numberOr(req.body.order, 0),
-        image_path: image ? toStoredPath(image) : "",
+        image_path: imagePath,
       });
 
       return res.status(201).json(serializeCertification(item, req));
@@ -695,7 +787,7 @@ router.post(
     const item = await Certification.create({
       ...pickFields(req.body, ["name", "issuer", "year", "description", "credential_url"]),
       order: numberOr(req.body.order, 0),
-      image_path: image ? toStoredPath(image) : "",
+      image_path: imagePath,
     });
 
     await scheduleMediaAutoDelete(req, "Certification", item._id);
@@ -709,27 +801,31 @@ router.put(
   asyncHandler(async (req, res) => {
     if (!isDatabaseReady()) {
       const image = getFile(req, "image");
+      const imagePath = await storeUploadedFile(image, "certs");
       const item = updateRecord("certifications", req.params.id, (current) => ({
         ...current,
         ...pickFields(req.body, ["name", "issuer", "year", "description", "credential_url"]),
         order: req.body.order !== undefined ? numberOr(req.body.order, current.order) : current.order,
-        image_path: image ? toStoredPath(image) : current.image_path,
+        image_path: imagePath || current.image_path,
       }));
 
       return res.json(serializeCertification(item, req));
     }
 
     const item = await findByIdOrThrow(Certification, req.params.id, "Certification");
+    const previousPaths = [item.image_path];
     Object.assign(item, pickFields(req.body, ["name", "issuer", "year", "description", "credential_url"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
 
     const image = getFile(req, "image");
-    if (image) {
-      item.image_path = toStoredPath(image);
+    const imagePath = await storeUploadedFile(image, "certs");
+    if (imagePath) {
+      item.image_path = imagePath;
     }
 
     await item.save();
     await scheduleMediaAutoDelete(req, "Certification", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, [item.image_path]);
     res.json(serializeCertification(item, req));
   })
 );
@@ -757,11 +853,13 @@ router.post(
     { name: "image3", maxCount: 1 },
   ]),
   asyncHandler(async (req, res) => {
+    const uploadedImages = await storeUploadedFiles(getFiles(req, ["image", "image2", "image3"]), "workshops");
+
     if (!isDatabaseReady()) {
       const item = createRecord("workshops", {
         ...pickFields(req.body, ["title", "organizer", "date", "description", "link_url"]),
         order: numberOr(req.body.order, 0),
-        image_paths: getFiles(req, ["image", "image2", "image3"]).map(toStoredPath),
+        image_paths: uploadedImages,
       });
 
       return res.status(201).json(serializeWorkshop(item, req));
@@ -770,7 +868,7 @@ router.post(
     const item = await Workshop.create({
       ...pickFields(req.body, ["title", "organizer", "date", "description", "link_url"]),
       order: numberOr(req.body.order, 0),
-      image_paths: getFiles(req, ["image", "image2", "image3"]).map(toStoredPath),
+      image_paths: uploadedImages,
     });
 
     await scheduleMediaAutoDelete(req, "Workshop", item._id);
@@ -790,12 +888,15 @@ router.put(
       const image1 = getFile(req, "image");
       const image2 = getFile(req, "image2");
       const image3 = getFile(req, "image3");
+      const image1Path = await storeUploadedFile(image1, "workshops");
+      const image2Path = await storeUploadedFile(image2, "workshops");
+      const image3Path = await storeUploadedFile(image3, "workshops");
 
       const item = updateRecord("workshops", req.params.id, (current) => {
         const images = [...(current.image_paths || [])];
-        if (image1) images[0] = toStoredPath(image1);
-        if (image2) images[1] = toStoredPath(image2);
-        if (image3) images[2] = toStoredPath(image3);
+        if (image1Path) images[0] = image1Path;
+        if (image2Path) images[1] = image2Path;
+        if (image3Path) images[2] = image3Path;
 
         return {
           ...current,
@@ -809,6 +910,7 @@ router.put(
     }
 
     const item = await findByIdOrThrow(Workshop, req.params.id, "Workshop");
+    const previousPaths = [...(item.image_paths || [])];
     Object.assign(item, pickFields(req.body, ["title", "organizer", "date", "description", "link_url"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
 
@@ -816,14 +918,18 @@ router.put(
     const image1 = getFile(req, "image");
     const image2 = getFile(req, "image2");
     const image3 = getFile(req, "image3");
+    const image1Path = await storeUploadedFile(image1, "workshops");
+    const image2Path = await storeUploadedFile(image2, "workshops");
+    const image3Path = await storeUploadedFile(image3, "workshops");
 
-    if (image1) images[0] = toStoredPath(image1);
-    if (image2) images[1] = toStoredPath(image2);
-    if (image3) images[2] = toStoredPath(image3);
+    if (image1Path) images[0] = image1Path;
+    if (image2Path) images[1] = image2Path;
+    if (image3Path) images[2] = image3Path;
 
     item.image_paths = images.filter(Boolean);
     await item.save();
     await scheduleMediaAutoDelete(req, "Workshop", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, item.image_paths || []);
     res.json(serializeWorkshop(item, req));
   })
 );
@@ -848,12 +954,13 @@ router.post(
   journalUpload.fields([{ name: "pdf", maxCount: 1 }]),
   asyncHandler(async (req, res) => {
     const pdf = getFile(req, "pdf");
+    const pdfPath = await storeUploadedFile(pdf, "journals");
 
     if (!isDatabaseReady()) {
       const item = createRecord("journals", {
         ...pickFields(req.body, ["title", "details"]),
         order: numberOr(req.body.order, 0),
-        pdf_path: pdf ? toStoredPath(pdf) : "",
+        pdf_path: pdfPath,
         pdf_name: pdf ? pdf.originalname || "" : "",
       });
 
@@ -863,7 +970,7 @@ router.post(
     const item = await Journal.create({
       ...pickFields(req.body, ["title", "details"]),
       order: numberOr(req.body.order, 0),
-      pdf_path: pdf ? toStoredPath(pdf) : "",
+      pdf_path: pdfPath,
       pdf_name: pdf ? pdf.originalname || "" : "",
     });
 
@@ -877,13 +984,14 @@ router.put(
   journalUpload.fields([{ name: "pdf", maxCount: 1 }]),
   asyncHandler(async (req, res) => {
     const pdf = getFile(req, "pdf");
+    const pdfPath = await storeUploadedFile(pdf, "journals");
 
     if (!isDatabaseReady()) {
       const item = updateRecord("journals", req.params.id, (current) => ({
         ...current,
         ...pickFields(req.body, ["title", "details"]),
         order: req.body.order !== undefined ? numberOr(req.body.order, current.order) : current.order,
-        pdf_path: pdf ? toStoredPath(pdf) : current.pdf_path,
+        pdf_path: pdfPath || current.pdf_path,
         pdf_name: pdf ? pdf.originalname || "" : current.pdf_name,
       }));
 
@@ -891,14 +999,16 @@ router.put(
     }
 
     const item = await findByIdOrThrow(Journal, req.params.id, "Journal");
+    const previousPaths = [item.pdf_path];
     Object.assign(item, pickFields(req.body, ["title", "details"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
-    if (pdf) {
-      item.pdf_path = toStoredPath(pdf);
+    if (pdfPath) {
+      item.pdf_path = pdfPath;
       item.pdf_name = pdf.originalname || "";
     }
     await item.save();
     await scheduleMediaAutoDelete(req, "Journal", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, [item.pdf_path]);
     res.json(serializeJournal(item, req));
   })
 );
@@ -923,12 +1033,13 @@ router.post(
   galleryUpload.fields([{ name: "image", maxCount: 1 }]),
   asyncHandler(async (req, res) => {
     const image = getFile(req, "image");
+    const imagePath = await storeUploadedFile(image, "gallery");
 
     if (!isDatabaseReady()) {
       const item = createRecord("gallery", {
         ...pickFields(req.body, ["title", "category", "caption"]),
         order: numberOr(req.body.order, 0),
-        image_path: image ? toStoredPath(image) : "",
+        image_path: imagePath,
       });
 
       return res.status(201).json(serializeGalleryItem(item, req));
@@ -937,7 +1048,7 @@ router.post(
     const item = await GalleryItem.create({
       ...pickFields(req.body, ["title", "category", "caption"]),
       order: numberOr(req.body.order, 0),
-      image_path: image ? toStoredPath(image) : "",
+      image_path: imagePath,
     });
 
     await scheduleMediaAutoDelete(req, "GalleryItem", item._id);
@@ -951,27 +1062,31 @@ router.put(
   asyncHandler(async (req, res) => {
     if (!isDatabaseReady()) {
       const image = getFile(req, "image");
+      const imagePath = await storeUploadedFile(image, "gallery");
       const item = updateRecord("gallery", req.params.id, (current) => ({
         ...current,
         ...pickFields(req.body, ["title", "category", "caption"]),
         order: req.body.order !== undefined ? numberOr(req.body.order, current.order) : current.order,
-        image_path: image ? toStoredPath(image) : current.image_path,
+        image_path: imagePath || current.image_path,
       }));
 
       return res.json(serializeGalleryItem(item, req));
     }
 
     const item = await findByIdOrThrow(GalleryItem, req.params.id, "Gallery item");
+    const previousPaths = [item.image_path];
     Object.assign(item, pickFields(req.body, ["title", "category", "caption"]));
     if (req.body.order !== undefined) item.order = numberOr(req.body.order, item.order);
 
     const image = getFile(req, "image");
-    if (image) {
-      item.image_path = toStoredPath(image);
+    const imagePath = await storeUploadedFile(image, "gallery");
+    if (imagePath) {
+      item.image_path = imagePath;
     }
 
     await item.save();
     await scheduleMediaAutoDelete(req, "GalleryItem", item._id);
+    await cleanupRemovedStoredPaths(previousPaths, [item.image_path]);
     res.json(serializeGalleryItem(item, req));
   })
 );

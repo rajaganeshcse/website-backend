@@ -3,6 +3,7 @@ const path = require("path");
 
 const { uploadAutoDeleteHours, uploadCleanupIntervalMinutes } = require("../config/env");
 const { backendRoot } = require("../middleware/upload");
+const { deleteCloudinaryAsset } = require("./cloudinaryMedia");
 const {
   Hero,
   Project,
@@ -132,7 +133,16 @@ function resolveStoredAbsolutePath(storedPath) {
   return absolutePath;
 }
 
-async function deleteStoredFile(storedPath) {
+async function deleteStoredMedia(storedPath) {
+  const normalizedPath = String(storedPath || "").trim();
+  if (!normalizedPath) {
+    return false;
+  }
+
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return deleteCloudinaryAsset(normalizedPath);
+  }
+
   const absolutePath = resolveStoredAbsolutePath(storedPath);
   if (!absolutePath) {
     return false;
@@ -184,7 +194,7 @@ async function deleteOwnedMedia({ ownerModel, ownerId, ownerSnapshot }) {
   const storedPaths = extractStoredPaths(ownerModel, ownerSnapshot);
 
   for (const storedPath of storedPaths) {
-    await deleteStoredFile(storedPath);
+    await deleteStoredMedia(storedPath);
   }
 
   await MediaAsset.deleteMany({
@@ -380,7 +390,7 @@ async function cleanupExpiredMediaAssets() {
     for (const asset of expiredAssets) {
       try {
         await removeStoredPathReference(asset.owner_model, asset.owner_id, asset.stored_path);
-        await deleteStoredFile(asset.stored_path);
+        await deleteStoredMedia(asset.stored_path);
 
         asset.deleted_at = new Date();
         asset.cleanup_status = "deleted";
@@ -430,6 +440,7 @@ function startMediaCleanupScheduler() {
 
 module.exports = {
   deleteOwnedMedia,
+  deleteStoredMedia,
   resolveAutoDeleteHours,
   scheduleUploadedMediaExpiry,
   cleanupExpiredMediaAssets,

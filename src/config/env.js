@@ -46,17 +46,42 @@ function uploadCleanupIntervalMinutes() {
   return nonNegativeNumberEnv("UPLOAD_CLEANUP_INTERVAL_MINUTES", 5);
 }
 
+function cloudinaryCloudName() {
+  return requiredEnv("CLOUDINARY_CLOUD_NAME");
+}
+
+function cloudinaryApiKey() {
+  return requiredEnv("CLOUDINARY_API_KEY");
+}
+
+function cloudinaryApiSecret() {
+  return requiredEnv("CLOUDINARY_API_SECRET");
+}
+
+function cloudinaryFolder() {
+  return String(process.env.CLOUDINARY_FOLDER || "portfolio")
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+}
+
 function validateSecurityConfig() {
   adminUsernames();
   adminPassword();
   jwtSecret();
   uploadAutoDeleteHours();
   uploadCleanupIntervalMinutes();
+  cloudinaryCloudName();
+  cloudinaryApiKey();
+  cloudinaryApiSecret();
 }
 
 module.exports = {
   adminPassword,
   adminUsernames,
+  cloudinaryApiKey,
+  cloudinaryApiSecret,
+  cloudinaryCloudName,
+  cloudinaryFolder,
   jwtSecret,
   uploadAutoDeleteHours,
   uploadCleanupIntervalMinutes,

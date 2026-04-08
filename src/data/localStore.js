@@ -285,4 +285,5 @@ module.exports = {
   deleteRecord,
   createMessage,
   readStore,
+  writeStore,
 };

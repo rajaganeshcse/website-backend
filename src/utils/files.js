@@ -4,7 +4,15 @@ const { backendRoot } = require("../middleware/upload");
 const { requestOrigin } = require("./origin");
 
 function toStoredPath(file) {
-  if (!file || !file.path) {
+  if (!file) {
+    return "";
+  }
+
+  if (file.cloudinaryUrl) {
+    return String(file.cloudinaryUrl || "");
+  }
+
+  if (!file.path) {
     return "";
   }
 

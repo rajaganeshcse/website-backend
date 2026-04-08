@@ -29,15 +29,11 @@ const {
   Journal,
   GalleryItem,
 } = require("./src/models/contentModels");
+const { uploadLocalFileToCloudinary } = require("./src/utils/cloudinaryMedia");
 
 const DEFAULT_RESUME_SOURCE = "C:\\Users\\HP\\OneDrive\\Desktop\\Rajaganesh Resume (2).pdf";
-const mediaRoot = path.join(__dirname, "media");
 
-function ensureDirectory(directoryPath) {
-  fs.mkdirSync(directoryPath, { recursive: true });
-}
-
-function copyResumeToMedia() {
+async function uploadResumeToCloudinary() {
   const sourcePath = process.env.SEED_RESUME_PATH || DEFAULT_RESUME_SOURCE;
 
   if (!fs.existsSync(sourcePath)) {
@@ -45,17 +41,10 @@ function copyResumeToMedia() {
     return { storedPath: "", fileName: "" };
   }
 
-  const targetDirectory = path.join(mediaRoot, "resumes");
-  ensureDirectory(targetDirectory);
-
-  const extension = path.extname(sourcePath) || ".pdf";
-  const targetFileName = `rajaganesh-resume${extension.toLowerCase()}`;
-  const targetPath = path.join(targetDirectory, targetFileName);
-
-  fs.copyFileSync(sourcePath, targetPath);
+  const uploaded = await uploadLocalFileToCloudinary(sourcePath, "hero", path.basename(sourcePath));
 
   return {
-    storedPath: `/media/resumes/${targetFileName}`,
+    storedPath: uploaded?.secure_url || "",
     fileName: path.basename(sourcePath),
   };
 }
@@ -70,7 +59,7 @@ async function replaceCollection(Model, documents) {
 async function main() {
   await connectToDatabase();
 
-  const resume = copyResumeToMedia();
+  const resume = await uploadResumeToCloudinary();
 
   await Hero.deleteMany({});
   await Hero.create({
@@ -101,7 +90,7 @@ async function main() {
   console.log(`Journals: ${journalSeed.length}`);
   console.log(`Gallery items: ${gallerySeed.length}`);
   if (resume.storedPath) {
-    console.log(`Resume copied to ${resume.storedPath}`);
+    console.log(`Resume uploaded to ${resume.storedPath}`);
   }
 }
 
