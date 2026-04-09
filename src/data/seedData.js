@@ -27,6 +27,7 @@ const heroSeed = {
   college: "Dhanalakshmi Srinivasan Engineering College, Perambalur - Computer Science and Engineering",
   address: "70, MaariAmman Kovil Street, Vanrasankuppam, Cuddalore (TK), Cuddalore (DT) - 607102",
   photo_path: "/media/photos/profile1.jpg",
+  site_icon_path: "",
   resume_path: "/media/resumes/rajaganesh-resume.pdf",
   resume_name: "Rajaganesh Resume (2).pdf",
 };
@@ -189,6 +190,7 @@ function buildFallbackPortfolio(req, absoluteUrl) {
       college: heroSeed.college,
       address: heroSeed.address,
       photo_url: absoluteUrl(req, heroSeed.photo_path),
+      site_icon_url: absoluteUrl(req, heroSeed.site_icon_path),
       resume_url: absoluteUrl(req, heroSeed.resume_path),
       resume_name: heroSeed.resume_name,
     },

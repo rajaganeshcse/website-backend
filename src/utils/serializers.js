@@ -32,6 +32,7 @@ function serializeHero(hero, req) {
     college: hero.college,
     address: hero.address,
     photo_url: absoluteUrl(req, hero.photo_path),
+    site_icon_url: absoluteUrl(req, hero.site_icon_path),
     resume_url: absoluteUrl(req, hero.resume_path),
     resume_name: hero.resume_name || "",
   };
