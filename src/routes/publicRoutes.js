@@ -3,7 +3,7 @@ const express = require("express");
 const asyncHandler = require("../utils/asyncHandler");
 const { DEFAULT_HERO } = require("../utils/defaults");
 const { isDatabaseReady } = require("../utils/dbState");
-const { getPortfolioResponse, getGalleryResponse, createMessage } = require("../data/localStore");
+const { getPortfolioResponse, getGalleryResponse, createMessage, readStore } = require("../data/localStore");
 const {
   Hero,
   Skill,
@@ -39,6 +39,20 @@ async function getOrCreateHero() {
     hero = await Hero.create(DEFAULT_HERO);
   }
   return hero;
+}
+
+function withCacheBust(url, value) {
+  if (!url) {
+    return "";
+  }
+
+  const version = value ? new Date(value).getTime() : 0;
+  if (!Number.isFinite(version) || version <= 0) {
+    return url;
+  }
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${version}`;
 }
 
 router.get(
@@ -81,6 +95,22 @@ router.get(
       workshops: workshops.map((item) => serializeWorkshop(item, req)),
       journals: journals.map((item) => serializeJournal(item, req)),
     });
+  })
+);
+
+router.get(
+  "/site-icon/",
+  asyncHandler(async (req, res) => {
+    const rawHero = !isDatabaseReady() ? readStore().hero : await getOrCreateHero();
+    const hero = serializeHero(rawHero, req);
+    const targetUrl = hero?.site_icon_url || hero?.photo_url || "";
+
+    if (!targetUrl) {
+      return res.status(404).json({ detail: "Site icon not found." });
+    }
+
+    res.set("Cache-Control", "no-store, max-age=0");
+    return res.redirect(withCacheBust(targetUrl, rawHero?.updatedAt || rawHero?.createdAt));
   })
 );
 

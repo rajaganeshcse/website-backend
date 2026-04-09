@@ -163,7 +163,7 @@ async function deleteStoredMedia(storedPath) {
 function extractStoredPaths(ownerModel, ownerSnapshot) {
   switch (ownerModel) {
     case "Hero":
-      return uniquePaths([ownerSnapshot.photo_path, ownerSnapshot.resume_path]);
+      return uniquePaths([ownerSnapshot.photo_path, ownerSnapshot.site_icon_path, ownerSnapshot.resume_path]);
     case "Project":
       return uniquePaths(ownerSnapshot.image_paths || []);
     case "AppItem":
@@ -276,6 +276,10 @@ async function removeStoredPathReference(ownerModel, ownerId, storedPath) {
     case "Hero":
       if (item.photo_path === storedPath) {
         item.photo_path = "";
+        changed = true;
+      }
+      if (item.site_icon_path === storedPath) {
+        item.site_icon_path = "";
         changed = true;
       }
       if (item.resume_path === storedPath) {
