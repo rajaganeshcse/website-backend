@@ -9,31 +9,45 @@ const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 const mediaRoot = path.join(__dirname, "..", "media");
-const allowedOrigins = [
+
+function normalizeOrigin(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function parseAllowedOrigins(value) {
+  return String(value || "")
+    .split(",")
+    .map(normalizeOrigin)
+    .filter(Boolean);
+}
+
+const allowedOrigins = new Set([
+  ...parseAllowedOrigins(process.env.CLIENT_URL),
   "https://rajaganeshcse.vercel.app",
+  "https://react-website-five-theta.vercel.app",
   "http://localhost:3000",
-];
+  "http://127.0.0.1:3000",
+].map(normalizeOrigin));
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.has(normalizeOrigin(origin))) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Origin not allowed by CORS"), false);
+  },
+  credentials: true,
+};
 
 app.set("trust proxy", 1);
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("CORS not allowed"), false);
-      }
-    },
-    credentials: true,
-  })
-);
-
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));

@@ -8,6 +8,17 @@ function requiredEnv(name) {
   return value;
 }
 
+function requiredEnvAny(names) {
+  for (const name of names) {
+    const value = String(process.env[name] || "").trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  throw new Error(`${names[0]} is required.`);
+}
+
 function nonNegativeNumberEnv(name, fallback) {
   const rawValue = String(process.env[name] ?? "").trim();
 
@@ -47,15 +58,15 @@ function uploadCleanupIntervalMinutes() {
 }
 
 function cloudinaryCloudName() {
-  return requiredEnv("CLOUDINARY_CLOUD_NAME");
+  return requiredEnvAny(["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_NAME", "CLOUD_NAME"]);
 }
 
 function cloudinaryApiKey() {
-  return requiredEnv("CLOUDINARY_API_KEY");
+  return requiredEnvAny(["CLOUDINARY_API_KEY", "CLOUDINARY_KEY"]);
 }
 
 function cloudinaryApiSecret() {
-  return requiredEnv("CLOUDINARY_API_SECRET");
+  return requiredEnvAny(["CLOUDINARY_API_SECRET", "CLOUDINARY_SECRET"]);
 }
 
 function cloudinaryFolder() {
@@ -70,9 +81,6 @@ function validateSecurityConfig() {
   jwtSecret();
   uploadAutoDeleteHours();
   uploadCleanupIntervalMinutes();
-  cloudinaryCloudName();
-  cloudinaryApiKey();
-  cloudinaryApiSecret();
 }
 
 module.exports = {

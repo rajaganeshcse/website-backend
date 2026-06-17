@@ -31,6 +31,7 @@ const heroSchema = new mongoose.Schema(
       default: "70, MaariAmman Kovil Street, Vanrasankuppam, Cuddalore (TK), Cuddalore (DT) - 607102",
     },
     photo_path: { type: String, default: "" },
+    site_icon_path: { type: String, default: "" },
     resume_path: { type: String, default: "" },
     resume_name: { type: String, default: "" },
   },

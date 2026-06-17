@@ -12,6 +12,7 @@ const DEFAULT_HERO = {
   location: "Vanrasankuppam, Cuddalore, Tamil Nadu, India",
   college: "Dhanalakshmi Srinivasan Engineering College, Perambalur - B.E CSE (2023 - 2027)",
   address: "70, MaariAmman Kovil Street, Vanrasankuppam, Cuddalore (TK), Cuddalore (DT) - 607102",
+  site_icon_path: "",
 };
 
 module.exports = {

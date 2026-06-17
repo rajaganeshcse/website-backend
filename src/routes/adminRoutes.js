@@ -301,6 +301,7 @@ router.put(
   "/hero/",
   heroUpload.fields([
     { name: "photo", maxCount: 1 },
+    { name: "site_icon", maxCount: 1 },
     { name: "resume", maxCount: 1 },
   ]),
   asyncHandler(async (req, res) => {
@@ -321,11 +322,16 @@ router.put(
     ]);
 
     const photo = getFile(req, "photo");
+    const siteIcon = getFile(req, "site_icon");
     const resume = getFile(req, "resume");
 
     if (!isDatabaseReady()) {
       if (photo) {
         updates.photo_path = await storeUploadedFile(photo, "hero");
+      }
+
+      if (siteIcon) {
+        updates.site_icon_path = await storeUploadedFile(siteIcon, "hero");
       }
 
       if (resume) {
@@ -338,11 +344,15 @@ router.put(
     }
 
     const hero = await getOrCreateHero();
-    const previousPaths = [hero.photo_path, hero.resume_path];
+    const previousPaths = [hero.photo_path, hero.site_icon_path, hero.resume_path];
     Object.assign(hero, updates);
 
     if (photo) {
       hero.photo_path = await storeUploadedFile(photo, "hero");
+    }
+
+    if (siteIcon) {
+      hero.site_icon_path = await storeUploadedFile(siteIcon, "hero");
     }
 
     if (resume) {
@@ -352,7 +362,7 @@ router.put(
 
     await hero.save();
     await scheduleMediaAutoDelete(req, "Hero", hero._id);
-    await cleanupRemovedStoredPaths(previousPaths, [hero.photo_path, hero.resume_path]);
+    await cleanupRemovedStoredPaths(previousPaths, [hero.photo_path, hero.site_icon_path, hero.resume_path]);
     res.json(serializeHero(hero, req));
   })
 );
