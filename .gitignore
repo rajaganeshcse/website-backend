@@ -4,3 +4,5 @@ npm-debug.log*
 media/
 .env
 target/
+__pycache__/
+*.py[cod]

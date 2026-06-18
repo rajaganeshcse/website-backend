@@ -46,5 +46,5 @@ mvn -DskipTests compile
 ## Notes
 
 - The frontend API contract stays the same.
-- If MongoDB is unavailable, the backend falls back to `src/data/localStore.json` just like the Node version.
-- Existing legacy Node and Django files are still present in this folder for reference during the migration, but the Spring Boot runtime is now under `src/main/java`.
+- If MongoDB is unavailable, the backend falls back to `src/data/localStore.json`.
+- The current backend runtime lives under `src/main/java`, with `src/data/localStore.json` acting as the local fallback store.
